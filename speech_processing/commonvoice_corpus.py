@@ -2,14 +2,13 @@ import os
 from dataclasses import asdict
 from dataclasses import dataclass
 from itertools import islice
-from typing import Any
 from typing import Optional
 
 import datasets
 from tqdm import tqdm
 from util import data_io
-from util.dataclass_utils import CachedData
 
+from speech_processing.asr_corpora import ASRCorpus
 from speech_processing.speech_utils import ASRSample
 from speech_processing.speech_utils import torchaudio_info
 
@@ -34,14 +33,13 @@ def build_asr_sample(d, HF_DATASETS_CACHE) -> Optional[ASRSample]:
 
 
 @dataclass
-class CommonVoiceRawData(CachedData):
+class CommonVoiceRawData(ASRCorpus):
     lang: str = "en"
     split_name: str = "train"
     num_samples: int = 100
     HF_DATASETS_CACHE: str = "/tmp/HF_CACHE"
-    manifest_name = "manifest.jsonl"
 
-    def _build(self):
+    def _build_manifest(self):
         assert self.HF_DATASETS_CACHE.endswith(HF_DATASETS)
         os.environ["HF_DATASETS_CACHE"] = self.HF_DATASETS_CACHE
         some_could_fail_factor = 2  # reserve more, to compensate possible failures
@@ -75,15 +73,6 @@ class CommonVoiceRawData(CachedData):
             self.get_filepath(self.manifest_name),
             (asdict(d) for d in data),
         )
-
-    def _get(self) -> Any:
-        assert os.path.isfile(self.get_filepath(self.manifest_name)), self.get_filepath(
-            self.manifest_name
-        )
-        return [
-            ASRSample(**d)
-            for d in data_io.read_jsonl(self.get_filepath(self.manifest_name))
-        ]
 
 
 if __name__ == "__main__":
