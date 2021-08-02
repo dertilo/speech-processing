@@ -40,7 +40,7 @@ class CommonVoiceRawData(ASRCorpus):
     HF_DATASETS_CACHE: str = "/tmp/HF_CACHE"
 
     def _build_manifest(self):
-        assert self.HF_DATASETS_CACHE.endswith(HF_DATASETS)
+        assert self.HF_DATASETS_CACHE.endswith(HF_DATASETS), self.HF_DATASETS_CACHE
         os.environ["HF_DATASETS_CACHE"] = self.HF_DATASETS_CACHE
         some_could_fail_factor = 2  # reserve more, to compensate possible failures
         try:  # cause some could fail

@@ -1,8 +1,10 @@
 import itertools
 import os
+import shutil
 from abc import abstractmethod
 from dataclasses import asdict
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List
 from typing import Optional
 
@@ -30,9 +32,9 @@ class ASRCorpus(CachedData):
         return self.get_filepath(self.manifest_name)
 
     def __manifest_file_exists(self):
-        assert os.path.isfile(self.get_filepath(self.manifest_name)), self.get_filepath(
-            self.manifest_name
-        )
+        if not os.path.isfile(self.get_filepath(self.manifest_name)):
+            shutil.rmtree(Path(self.get_filepath(self.manifest_name)).parent)
+            raise Exception(f"{self.get_filepath(self.manifest_name)} not existing!")
 
 
 @dataclass
