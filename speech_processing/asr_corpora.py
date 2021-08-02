@@ -76,6 +76,8 @@ class ProcessedASRCorpus(ASRCorpus):
             return self.process_filter_sequentially(raw_samples)
         elif self.mode == "threadpool":
             return self.process_filter_threading(raw_samples)
+        elif self.mode == "dask":
+            return self.process_filter_dask(raw_samples)
         else:
             raise NotImplementedError
 
@@ -107,3 +109,26 @@ class ProcessedASRCorpus(ASRCorpus):
             desc=f"threadpool-based processing of {str(asdict(self))[:9]}",
         )
         return list(g)
+
+    def process_filter_dask(self, raw_samples: List[ASRSample]):
+        # TODO: not sure whether this is intelligent!
+        # cause inputs come from main-process and
+        # results are collected in main-process, not really parallel
+
+        num_cpus = multiprocessing.cpu_count()
+        n_workers = 2 * num_cpus
+        inputs = itertools.islice(raw_samples, self.limit)
+
+        from dask.distributed import Client, LocalCluster
+        import dask.bag as db
+
+        with LocalCluster(
+            n_workers=n_workers,
+            local_directory="/tmp",
+        ) as cluster, Client(cluster) as _:
+
+            result = (
+                db.from_sequence(inputs).map(self.process).filter(self.__not_failted)
+            )
+            asr_samples = result.compute()
+        return asr_samples
