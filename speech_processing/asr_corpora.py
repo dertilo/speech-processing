@@ -1,4 +1,5 @@
 import itertools
+import multiprocessing
 import os
 import shutil
 from abc import abstractmethod
@@ -11,6 +12,7 @@ from typing import Optional
 from tqdm import tqdm
 from util import data_io
 from util.dataclass_utils import CachedData
+from util.processing_utils import process_with_threadpool
 
 from speech_processing.speech_utils import ASRSample
 
@@ -44,6 +46,7 @@ class ProcessedASRCorpus(ASRCorpus):
     max_duration: float = 120.0
     min_chars: int = 2
     limit: Optional[int] = None
+    mode: str = "sequential"
 
     @abstractmethod
     def read_raw_data(self) -> List[ASRSample]:
@@ -69,17 +72,38 @@ class ProcessedASRCorpus(ASRCorpus):
         return all_good
 
     def process_filter(self, raw_samples: List[ASRSample]):
+        if self.mode == "sequential":
+            return self.process_filter_sequentially(raw_samples)
+        elif self.mode == "threadpool":
+            return self.process_filter_threading(raw_samples)
+        else:
+            raise NotImplementedError
 
-        asr_samples: List[ASRSample] = list(
-            itertools.islice(
-                filter(
-                    lambda s: self.filter_sample(s) if s is not None else False,
-                    (
-                        self.process(t)
-                        for t in tqdm(raw_samples, desc="asr-samples for manifest")
-                    ),
-                ),
-                self.limit,
-            )  # noqa
+    def __not_failted(self, s):
+        return self.filter_sample(s) if s is not None else False
+
+    def process_filter_sequentially(self, raw_samples: List[ASRSample]):
+        inputs = itertools.islice(raw_samples, self.limit)
+        processed_g = (self.process(t) for t in inputs)
+        g = tqdm(
+            filter(self.__not_failted, processed_g),
+            desc=f"sequentially processing of {str(asdict(self))[:9]}",
         )  # noqa
-        return asr_samples
+        return list(g)
+
+    def process_filter_threading(self, raw_samples: List[ASRSample]):
+        num_cpus = multiprocessing.cpu_count()
+        inputs = itertools.islice(raw_samples, self.limit)
+        processed_g = process_with_threadpool(
+            inputs,
+            self.process,
+            max_workers=2 * num_cpus,
+        )
+        g = tqdm(
+            filter(
+                self.__not_failted,
+                processed_g,
+            ),
+            desc=f"threadpool-based processing of {str(asdict(self))[:9]}",
+        )
+        return list(g)
