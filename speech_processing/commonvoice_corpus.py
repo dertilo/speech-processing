@@ -47,7 +47,7 @@ class CommonVoiceRawData(ASRCorpus):
         num_samples_s = (
             "-" + str(self.num_samples) if self.num_samples is not None else ""
         )
-        return f"{self.lang}-{self.split_name}{num_samples_s}"
+        return f"commonvoice-{self.lang}-{self.split_name}{num_samples_s}"
 
     def _build_manifest(self):
         assert self.HF_DATASETS_CACHE.endswith(HF_DATASETS), self.HF_DATASETS_CACHE
