@@ -56,9 +56,9 @@ class ProcessedASRCorpus(ASRCorpus):
     def process(self, sample: ASRSample) -> Optional[ASRSample]:
         raise NotImplementedError
 
-    def _build(self):
+    def _build_manifest(self):
         raw_samples = self.read_raw_data()
-        asr_samples = self.process_filter(raw_samples)
+        asr_samples = self.__process_filter(raw_samples)
         print(f"{asdict(self)}: {len(asr_samples)} of {len(raw_samples)} are good!")
         data_io.write_jsonl(
             self.get_filepath(self.manifest_name), (asdict(s) for s in asr_samples)
@@ -71,20 +71,20 @@ class ProcessedASRCorpus(ASRCorpus):
         all_good = all([good_transcript, good_duration])
         return all_good
 
-    def process_filter(self, raw_samples: List[ASRSample]):
+    def __process_filter(self, raw_samples: List[ASRSample]):
         if self.mode == "sequential":
-            return self.process_filter_sequentially(raw_samples)
+            return self.__process_filter_sequentially(raw_samples)
         elif self.mode == "threadpool":
-            return self.process_filter_threading(raw_samples)
+            return self.__process_filter_threading(raw_samples)
         elif self.mode == "dask":
-            return self.process_filter_dask(raw_samples)
+            return self.__process_filter_dask(raw_samples)
         else:
             raise NotImplementedError
 
     def __not_failted(self, s):
         return self.filter_sample(s) if s is not None else False
 
-    def process_filter_sequentially(self, raw_samples: List[ASRSample]):
+    def __process_filter_sequentially(self, raw_samples: List[ASRSample]):
         inputs = itertools.islice(raw_samples, self.limit)
         processed_g = (self.process(t) for t in inputs)
         g = tqdm(
@@ -93,7 +93,7 @@ class ProcessedASRCorpus(ASRCorpus):
         )  # noqa
         return list(g)
 
-    def process_filter_threading(self, raw_samples: List[ASRSample]):
+    def __process_filter_threading(self, raw_samples: List[ASRSample]):
         num_cpus = multiprocessing.cpu_count()
         inputs = itertools.islice(raw_samples, self.limit)
         processed_g = process_with_threadpool(
@@ -110,7 +110,7 @@ class ProcessedASRCorpus(ASRCorpus):
         )
         return list(g)
 
-    def process_filter_dask(self, raw_samples: List[ASRSample]):
+    def __process_filter_dask(self, raw_samples: List[ASRSample]):
         # TODO: not sure whether this is intelligent!
         # cause inputs come from main-process and
         # results are collected in main-process, not really parallel
