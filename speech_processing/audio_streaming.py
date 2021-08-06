@@ -1,3 +1,6 @@
+from typing import Generator
+from typing import Optional
+
 import numpy as np
 from nemo.collections.asr.parts.preprocessing import AudioSegment
 
@@ -39,3 +42,22 @@ def load_and_resample(audio_filepath, target_sample_rate, offset=0.0, duration=N
     a = a.astype(np.int16)
     a = np.expand_dims(a, axis=1)
     return a
+
+
+def build_buffer_audio_arrays_generator(chunk_size=1600) -> Generator:
+    chunk = yield
+    buffer = np.zeros(0, dtype=np.int16)
+    while chunk is not None:
+        valid_chunk: Optional[np.ndarray] = None
+        assert buffer.dtype == chunk.dtype
+        buffer = np.concatenate([buffer, chunk])
+        if len(buffer) >= chunk_size:
+            valid_chunk = buffer[:chunk_size]
+            buffer = buffer[chunk_size:]
+            assert len(buffer) <= chunk_size, len(buffer)
+        chunk = yield valid_chunk
+
+    if len(buffer) > 0:
+        assert len(buffer) <= chunk_size, len(buffer)
+        yield buffer
+        # could be that part of the signal is thrown away

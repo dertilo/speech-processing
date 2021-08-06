@@ -15,7 +15,7 @@ from speech_processing.asr_corpora import ProcessedASRCorpus
 from speech_processing.speech_utils import ASRSample
 from speech_processing.speech_utils import torchaudio_info
 
-HF_DATASETS = "huggingface/datasets"
+HF_DATASETS = "huggingface/datasets"  # TODO: rename huggingface to huggingface_cache
 
 
 def build_asr_sample(d, HF_DATASETS_CACHE) -> Optional[ASRSample]:
