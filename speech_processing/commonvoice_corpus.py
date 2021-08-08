@@ -1,5 +1,4 @@
 import os
-import subprocess
 from dataclasses import asdict
 from dataclasses import dataclass
 from itertools import islice
@@ -11,7 +10,7 @@ from tqdm import tqdm
 from util import data_io
 
 from speech_processing.asr_corpora import ASRCorpus
-from speech_processing.asr_corpora import ProcessedASRCorpus
+from speech_processing.asr_corpora import SoxResampleSegment
 from speech_processing.speech_utils import ASRSample
 from speech_processing.speech_utils import torchaudio_info
 
@@ -87,7 +86,7 @@ class CommonVoiceRawData(ASRCorpus):
 
 
 @dataclass
-class CommonVoiceCorpusProcessDump(CommonVoiceRawData, ProcessedASRCorpus):
+class CommonVoiceCorpusProcessDump(CommonVoiceRawData, SoxResampleSegment):
     def read_raw_data(self) -> List[ASRSample]:
         rawdata = CommonVoiceRawData(
             self.cache_base,
@@ -97,27 +96,6 @@ class CommonVoiceCorpusProcessDump(CommonVoiceRawData, ProcessedASRCorpus):
             HF_DATASETS_CACHE=self.HF_DATASETS_CACHE,
         ).build_or_get()
         return [ASRSample(**d) for d in data_io.read_jsonl(rawdata)]
-
-    def process(self, sample: ASRSample) -> Optional[ASRSample]:
-        duration = sample.end - sample.start
-
-        processed_audio_file = f"{self.cache_dir}/{sample.id}.wav"
-        # with NamedTemporaryFile(suffix="_tmp.wav") as tmp_file:
-        subprocess.check_output(
-            # first channel only
-            f"sox '{sample.audio_filepath}' -c 1 -r 16000 {processed_audio_file} trim {sample.start} {duration}",
-            shell=True,
-        )
-        # transcode_perturbation(tmp_file.name, processed_audio_file)
-
-        return ASRSample(
-            sample.id,
-            processed_audio_file,
-            sample.sample_rate,
-            text=sample.text,
-            start=0.0,
-            end=duration,
-        )
 
 
 if __name__ == "__main__":
