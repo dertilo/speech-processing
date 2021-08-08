@@ -2,6 +2,7 @@ import itertools
 import multiprocessing
 import os
 import shutil
+import subprocess
 from abc import abstractmethod
 from dataclasses import asdict
 from dataclasses import dataclass
@@ -132,3 +133,29 @@ class ProcessedASRCorpus(ASRCorpus):
             )
             asr_samples = result.compute()
         return asr_samples
+
+
+# pylint: disable=abstract-method
+@dataclass
+class SoxResampleSegment(ProcessedASRCorpus):
+    def process(self, sample: ASRSample) -> ASRSample:
+        duration = sample.end - sample.start
+
+        processed_audio_file = f"{self.cache_dir}/{sample.id}.wav"
+        if not os.path.isfile(processed_audio_file):
+            # with NamedTemporaryFile(suffix="_tmp.wav") as tmp_file:
+            subprocess.check_output(
+                # first channel only
+                f"sox '{sample.audio_filepath}' -c 1 -r 16000 {processed_audio_file} trim {sample.start} {duration}",
+                shell=True,
+            )
+            # transcode_perturbation(tmp_file.name, processed_audio_file)
+
+        return ASRSample(
+            sample.id,
+            processed_audio_file,
+            sample.sample_rate,
+            text=sample.text,
+            start=0.0,
+            end=duration,
+        )
