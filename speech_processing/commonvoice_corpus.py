@@ -35,18 +35,19 @@ def build_asr_sample(d, HF_DATASETS_CACHE) -> Optional[ASRSample]:
 
 
 @dataclass
-class CommonVoiceRawData(ASRCorpus):
+class HuggingfaceSpeechDataset(ASRCorpus):
     lang: str = "en"
     split_name: str = "train"
     num_samples: int = None
     HF_DATASETS_CACHE: str = "/tmp/HF_CACHE"
+    hf_dataset_name: str = "common_voice"
 
     @property
     def name(self):
         num_samples_s = (
             "-" + str(self.num_samples) if self.num_samples is not None else ""
         )
-        return f"commonvoice-{self.lang}-{self.split_name}{num_samples_s}"
+        return f"{self.hf_dataset_name}-{self.lang}-{self.split_name}{num_samples_s}"
 
     def _build_manifest(self):
         assert self.HF_DATASETS_CACHE.endswith(HF_DATASETS), self.HF_DATASETS_CACHE
@@ -55,7 +56,7 @@ class CommonVoiceRawData(ASRCorpus):
         try:  # cause some could fail
             assert self.num_samples is not None
             ds = datasets.load_dataset(
-                "common_voice",
+                self.hf_dataset_name,
                 self.lang,
                 keep_in_memory=True,
                 split=f"{self.split_name}[:{self.num_samples * some_could_fail_factor}]",
@@ -63,7 +64,7 @@ class CommonVoiceRawData(ASRCorpus):
             )
         except Exception:
             ds = datasets.load_dataset(
-                "common_voice",
+                self.hf_dataset_name,
                 self.lang,
                 keep_in_memory=True,
                 split=f"{self.split_name}",
@@ -86,9 +87,9 @@ class CommonVoiceRawData(ASRCorpus):
 
 
 @dataclass
-class CommonVoiceCorpusProcessDump(CommonVoiceRawData, SoxResampleSegment):
+class HFSpeechDatasetProcessDump(SoxResampleSegment, HuggingfaceSpeechDataset):
     def read_raw_data(self) -> List[ASRSample]:
-        rawdata = CommonVoiceRawData(
+        rawdata = HuggingfaceSpeechDataset(
             self.cache_base,
             lang=self.lang,
             split_name=self.split_name,
@@ -99,9 +100,12 @@ class CommonVoiceCorpusProcessDump(CommonVoiceRawData, SoxResampleSegment):
 
 
 if __name__ == "__main__":
-    dataset = CommonVoiceRawData(
-        "/tmp/cache",
-        "de",
-        "validation",
+    dataset = HFSpeechDatasetProcessDump(
+        cache_base="/tmp/cache",
+        lang="en",
+        max_duration=20,
+        split_name="train",
+        num_samples=100_000,
+        mode="dask",
         HF_DATASETS_CACHE=os.environ["HF_DATASETS_CACHE"],
     ).build_or_get()
