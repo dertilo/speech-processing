@@ -1,7 +1,9 @@
 import os
+import shutil
 from dataclasses import asdict
 from dataclasses import dataclass
 from itertools import islice
+from pathlib import Path
 from typing import List
 from typing import Optional
 
@@ -14,7 +16,7 @@ from speech_processing.asr_corpora import SoxResampleSegment
 from speech_processing.speech_utils import ASRSample
 from speech_processing.speech_utils import torchaudio_info
 
-HF_DATASETS = "huggingface/datasets"  # TODO: rename huggingface to huggingface_cache
+HF_DATASETS = "huggingface_cache/datasets"
 
 
 def build_asr_sample(d, HF_DATASETS_CACHE) -> Optional[ASRSample]:
@@ -24,10 +26,8 @@ def build_asr_sample(d, HF_DATASETS_CACHE) -> Optional[ASRSample]:
     if os.path.isfile(file):
         num_frames, sample_rate = torchaudio_info(file)
         duration = (num_frames - 2) / sample_rate
-
-        o = ASRSample(
-            file.split("/")[-1], file, sample_rate, end=duration, text=d["sentence"]
-        )
+        p = Path(file).stem
+        o = ASRSample(p, file, sample_rate, end=duration, text=d["sentence"])
     else:
         print(f"WARNING: {file} not fount!!")
         o = None
@@ -95,17 +95,31 @@ class HFSpeechDatasetProcessDump(SoxResampleSegment, HuggingfaceSpeechDataset):
             split_name=self.split_name,
             num_samples=self.num_samples,
             HF_DATASETS_CACHE=self.HF_DATASETS_CACHE,
+            hf_dataset_name=self.hf_dataset_name,
         ).build_or_get()
         return [ASRSample(**d) for d in data_io.read_jsonl(rawdata)]
 
 
 if __name__ == "__main__":
-    dataset = HFSpeechDatasetProcessDump(
-        cache_base="/tmp/cache",
-        lang="en",
-        max_duration=20,
-        split_name="train",
-        num_samples=100_000,
-        mode="dask",
-        HF_DATASETS_CACHE=os.environ["HF_DATASETS_CACHE"],
-    ).build_or_get()
+    corpora_names = [
+        # "SLR61", # argentinian
+        "SLR71",
+        "SLR72",  # colombian
+        "SLR73",
+        "SLR74",
+        "SLR75",
+    ]
+    for corpus_name in corpora_names:
+        dataset = HFSpeechDatasetProcessDump(
+            hf_dataset_name="openslr",
+            cache_base="/tmp/cache",
+            lang=corpus_name,
+            max_duration=20,
+            split_name="train",
+            # num_samples=100_000,
+            mode="dask",
+            HF_DATASETS_CACHE=os.environ["HF_DATASETS_CACHE"],
+        )
+        dataset.build_or_get()
+        os.makedirs("/tmp/spanish", exist_ok=True)
+        shutil.move(dataset.cache_dir, f"/tmp/spanish/{corpus_name}")
