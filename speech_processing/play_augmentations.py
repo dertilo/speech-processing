@@ -48,12 +48,12 @@ def get_test_files():
     DATA_PATH = "/home/tilo/data/audio/data"
     corpus_name = "dev-other"
     raw_data_path = f"{DATA_PATH}/corpora/LibriSpeech/{corpus_name}"
-    file1_nmraid = f"{raw_data_path}/3660/6517/3660-6517-0031.flac"
-    file2_nmraid = f"{raw_data_path}/1630/102884/1630-102884-0001.flac"
+    file1_somewhere = f"{raw_data_path}/3660/6517/3660-6517-0031.flac"
+    file2_somewhere = f"{raw_data_path}/1630/102884/1630-102884-0001.flac"
     aug_dir = "/tmp/aug_dir"
     os.makedirs(aug_dir, exist_ok=True)
-    file1 = get_file(file1_nmraid, aug_dir)
-    file2 = get_file(file2_nmraid, aug_dir)
+    file1 = get_file(file1_somewhere, aug_dir)
+    file2 = get_file(file2_somewhere, aug_dir)
     return file1, file2
 
 
