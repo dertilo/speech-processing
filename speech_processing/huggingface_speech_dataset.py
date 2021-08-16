@@ -70,16 +70,19 @@ class HuggingfaceSpeechDataset(ASRCorpus):
                 split=f"{self.split_name}",
                 cache_dir=self.HF_DATASETS_CACHE,
             )
-        data = islice(
-            filter(
-                lambda x: x is not None,
-                (
-                    build_asr_sample(d, self.HF_DATASETS_CACHE)
-                    for d in tqdm(ds, desc=f"building: {asdict(self)}")
+        data = list(
+            islice(
+                filter(
+                    lambda x: x is not None,
+                    (
+                        build_asr_sample(d, self.HF_DATASETS_CACHE)
+                        for d in tqdm(ds, desc=f"building: {asdict(self)}")
+                    ),
                 ),
-            ),
-            self.num_samples,
+                self.num_samples,
+            )
         )
+        assert len(data) > 0
         data_io.write_jsonl(
             self.get_filepath(self.manifest_name),
             (asdict(d) for d in data),
